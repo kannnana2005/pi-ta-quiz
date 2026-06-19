@@ -687,7 +687,6 @@
 
     const WRONG_STORAGE_KEY = 'quizWrongQuestions';
     const ASKED_STORAGE_KEY = 'quizAskedQuestions';
-    const UNLOCKED_GENRES_STORAGE_KEY = 'quizUnlockedGenres';
     const DEFAULT_WRONG_LIMIT = 100;
     const DEFAULT_ASKED_LIMIT = 300;
 
@@ -803,7 +802,7 @@
       try {
         config = await api('config');
         applySettings(config.settings || {});
-        unlockedGenres = getStoredUnlockedGenres();
+        unlockedGenres = [];
         mergeUnlockedGenres();
         selectedGenreSheets = new Set(config.genres.map((genre) => genre.sheet));
         renderHome();
@@ -1030,7 +1029,6 @@
         }
 
         unlockedGenres = mergeGenreLists(unlockedGenres, genres);
-        saveUnlockedGenres();
         mergeUnlockedGenres();
         genres.forEach((genre) => selectedGenreSheets.add(genre.sheet));
         normalizeSelectedCount();
@@ -1053,19 +1051,6 @@
         }
       });
       return [...map.values()];
-    }
-
-    function getStoredUnlockedGenres() {
-      try {
-        const parsed = JSON.parse(localStorage.getItem(UNLOCKED_GENRES_STORAGE_KEY) || '[]');
-        return Array.isArray(parsed) ? parsed : [];
-      } catch {
-        return [];
-      }
-    }
-
-    function saveUnlockedGenres() {
-      localStorage.setItem(UNLOCKED_GENRES_STORAGE_KEY, JSON.stringify(unlockedGenres));
     }
 
     function renderCounts() {
