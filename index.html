@@ -249,6 +249,21 @@
       font-weight: 900;
     }
 
+    .question-image {
+      display: none;
+      width: 100%;
+      max-height: 320px;
+      object-fit: contain;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+      margin: 0 0 18px;
+    }
+
+    .question-image[src]:not([src=""]) {
+      display: block;
+    }
+
     .choices {
       display: grid;
       gap: 12px;
@@ -268,6 +283,10 @@
       padding: 12px 16px;
       text-align: left;
       cursor: pointer;
+    }
+
+    .choice.has-image {
+      align-items: start;
     }
 
     .choice:hover:not(:disabled) {
@@ -291,6 +310,27 @@
 
     .choice-text {
       overflow-wrap: anywhere;
+    }
+
+    .choice-content {
+      display: grid;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .choice-image {
+      display: none;
+      width: min(100%, 280px);
+      max-height: 170px;
+      object-fit: contain;
+      justify-self: center;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .choice-image[src]:not([src=""]) {
+      display: block;
     }
 
     .choice-mark {
@@ -414,8 +454,8 @@
   <main>
     <section class="shell">
       <div id="homeView" class="view active">
-        <h1 id="appTitle">4択クイズ</h1>
-        <p id="appSubtitle" class="lead">ジャンル、問題数、制限時間を選んでスタート。</p>
+        <h1 id="appTitle" hidden></h1>
+        <p id="appSubtitle" class="lead" hidden></p>
         <img id="topImage" class="top-image" src="" alt="">
         <div id="notice" class="notice" hidden></div>
         <p id="loadStatus" class="status">設定を読み込んでいます。</p>
@@ -452,6 +492,7 @@
           <span id="progressBar"></span>
         </div>
         <div id="timerText" class="timer"></div>
+        <img id="questionImage" class="question-image" src="" alt="">
         <p id="questionText" class="question"></p>
         <div id="choices" class="choices"></div>
         <div id="answer" class="answer" aria-live="polite">
@@ -503,15 +544,16 @@
 
     const sampleConfig = {
       settings: {
-        title: '4択クイズ',
-        appTitle: '4択クイズ',
-        appSubtitle: 'ジャンル、問題数、制限時間を選んでスタート。',
-        topImage: '',
-        background: '',
-        panelBackground: '',
-        defaultQuestionCount: '10',
-        defaultTimeLimit: '0',
-        showNotice: 'true',
+        'タイトル': '4択クイズ',
+        'タイトルの表示': 't',
+        'サブタイトル': 'ジャンル、問題数、制限時間を選んでスタート。',
+        'サブタイトルの表示': 't',
+        'TOP画像': '',
+        '外側背景': '',
+        '枠内背景': '',
+        '初期問題数': '10',
+        '初期制限時間': '0',
+        'お知らせの表示': 't',
         '間違えた問題の保存上限': '100',
         '出題済み問題の保存上限': '300',
         '履歴機能の表示': 't',
@@ -536,31 +578,34 @@
     const sampleQuestions = [
       {
         question: '日本で一番高い山はどれ？',
+        image: '',
         choices: [
-          { text: '富士山', correct: true },
-          { text: '北岳', correct: false },
-          { text: '槍ヶ岳', correct: false },
-          { text: '穂高岳', correct: false }
+          { text: '富士山', image: '', correct: true },
+          { text: '北岳', image: '', correct: false },
+          { text: '槍ヶ岳', image: '', correct: false },
+          { text: '穂高岳', image: '', correct: false }
         ],
         explanation: '富士山の標高は3,776mで、日本で最も高い山です。'
       },
       {
         question: '世界で最も面積が大きい国はどれ？',
+        image: '',
         choices: [
-          { text: 'ロシア', correct: true },
-          { text: 'カナダ', correct: false },
-          { text: '中国', correct: false },
-          { text: 'アメリカ', correct: false }
+          { text: 'ロシア', image: '', correct: true },
+          { text: 'カナダ', image: '', correct: false },
+          { text: '中国', image: '', correct: false },
+          { text: 'アメリカ', image: '', correct: false }
         ],
         explanation: 'ロシアは世界最大の面積を持つ国です。'
       },
       {
         question: '「光年」は何を表す単位？',
+        image: '',
         choices: [
-          { text: '距離', correct: true },
-          { text: '時間', correct: false },
-          { text: '明るさ', correct: false },
-          { text: '重さ', correct: false }
+          { text: '距離', image: '', correct: true },
+          { text: '時間', image: '', correct: false },
+          { text: '明るさ', image: '', correct: false },
+          { text: '重さ', image: '', correct: false }
         ],
         explanation: '光年は、光が1年間に進む距離を表す単位です。'
       }
@@ -603,6 +648,7 @@
     const scoreText = document.querySelector('#scoreText');
     const progressBar = document.querySelector('#progressBar');
     const timerText = document.querySelector('#timerText');
+    const questionImage = document.querySelector('#questionImage');
     const questionText = document.querySelector('#questionText');
     const choicesElement = document.querySelector('#choices');
     const answer = document.querySelector('#answer');
@@ -733,21 +779,29 @@
     }
 
     function applySettings(settings) {
-      appTitle.textContent = getSetting(settings, ['title', 'appTitle'], '4択クイズ');
-      appSubtitle.textContent = getSetting(settings, ['appSubtitle'], 'ジャンル、問題数、制限時間を選んでスタート。');
-      topImage.src = getSetting(settings, ['topImage'], '');
-      topImage.alt = getSetting(settings, ['title', 'appTitle'], 'TOP画像');
-      applyBackgroundSetting(document.body, '--body-background', getSetting(settings, ['background'], ''), 'body');
-      applyBackgroundSetting(document.documentElement, '--panel-background', getSetting(settings, ['panelBackground'], ''), 'panel');
+      const titleText = getSetting(settings, ['タイトル', 'title', 'appTitle'], '');
+      const subtitleText = getSetting(settings, ['サブタイトル', 'appSubtitle'], '');
+      const titleVisible = getFlagFromSettings(settings, ['タイトルの表示', 'showTitle'], true) && titleText !== '';
+      const subtitleVisible = getFlagFromSettings(settings, ['サブタイトルの表示', 'showSubtitle'], true) && subtitleText !== '';
 
-      const defaultCountText = getSetting(settings, ['defaultQuestionCount'], '10');
+      appTitle.textContent = titleText;
+      appTitle.hidden = !titleVisible;
+      appSubtitle.textContent = subtitleText;
+      appSubtitle.hidden = !subtitleVisible;
+
+      topImage.src = getSetting(settings, ['TOP画像', 'topImage'], '');
+      topImage.alt = titleText || 'TOP画像';
+      applyBackgroundSetting(document.body, '--body-background', getSetting(settings, ['外側背景', 'background'], ''), 'body');
+      applyBackgroundSetting(document.documentElement, '--panel-background', getSetting(settings, ['枠内背景', 'panelBackground'], ''), 'panel');
+
+      const defaultCountText = getSetting(settings, ['初期問題数', 'defaultQuestionCount'], '10');
       const defaultCount = parseInt(defaultCountText, 10);
       selectedCount = Number.isNaN(defaultCount) ? 10 : defaultCount;
       if (String(defaultCountText).toLowerCase() === 'all') {
         selectedCount = 'all';
       }
 
-      const defaultTimeLimit = parseInt(getSetting(settings, ['defaultTimeLimit'], '0'), 10);
+      const defaultTimeLimit = parseInt(getSetting(settings, ['初期制限時間', 'defaultTimeLimit'], '0'), 10);
       selectedTimer = Number.isNaN(defaultTimeLimit) ? 0 : defaultTimeLimit;
     }
 
@@ -768,6 +822,11 @@
 
     function getFlagSetting(keys, fallback) {
       const value = getSetting(config.settings || {}, keys, fallback ? 't' : 'f').toLowerCase();
+      return ['t', 'true', '1', 'yes', 'on', '表示'].includes(value);
+    }
+
+    function getFlagFromSettings(settings, keys, fallback) {
+      const value = getSetting(settings, keys, fallback ? 't' : 'f').toLowerCase();
       return ['t', 'true', '1', 'yes', 'on', '表示'].includes(value);
     }
 
@@ -835,7 +894,7 @@
     }
 
     function renderNotice() {
-      const showNotice = String(config.settings?.showNotice ?? 'true').toLowerCase() !== 'false';
+      const showNotice = getFlagSetting(['お知らせの表示', 'showNotice'], true);
       if (!showNotice || !config.notice) {
         notice.hidden = true;
         notice.innerHTML = '';
@@ -1054,6 +1113,7 @@
       return {
         question: question.question,
         genre: question.genre || '',
+        image: question.image || '',
         choices: shuffle(question.choices),
         explanation: question.explanation || '',
       };
@@ -1066,6 +1126,8 @@
       questionCount.textContent = `Q${currentIndex + 1} / ${activeQuestions.length}`;
       scoreText.textContent = `Score ${score}`;
       progressBar.style.width = `${((currentIndex + 1) / activeQuestions.length) * 100}%`;
+      questionImage.src = current.image || '';
+      questionImage.alt = current.image ? current.question : '';
       questionText.textContent = current.question;
       choicesElement.innerHTML = '';
       answer.className = 'answer';
@@ -1076,13 +1138,19 @@
 
       current.choices.forEach((choice, index) => {
         const button = document.createElement('button');
-        button.className = 'choice';
+        button.className = `choice ${choice.image ? 'has-image' : ''}`;
         button.type = 'button';
         button.innerHTML = `
           <span class="choice-letter">${String.fromCharCode(65 + index)}</span>
-          <span class="choice-text"></span>
+          <span class="choice-content">
+            <img class="choice-image" src="" alt="">
+            <span class="choice-text"></span>
+          </span>
           <span class="choice-mark" aria-hidden="true"></span>
         `;
+        const image = button.querySelector('.choice-image');
+        image.src = choice.image || '';
+        image.alt = choice.text || `選択肢${String.fromCharCode(65 + index)}の画像`;
         button.querySelector('.choice-text').textContent = choice.text;
         button.addEventListener('click', () => selectAnswer(index, false));
         choicesElement.appendChild(button);
@@ -1258,25 +1326,31 @@
     }
 
     function normalizeQuestionForStorage(question) {
-      const correctChoice = question.choices.find((choice) => choice.correct)?.text || '';
+      const correct = question.choices.find((choice) => choice.correct) || {};
       const wrongChoices = question.choices
         .filter((choice) => !choice.correct)
-        .map((choice) => choice.text)
-        .sort();
+        .map((choice) => ({
+          text: choice.text || '',
+          image: choice.image || ''
+        }))
+        .sort((a, b) => `${a.text}|${a.image}`.localeCompare(`${b.text}|${b.image}`));
       const key = [
         question.genre || '',
         question.question,
-        correctChoice,
-        ...wrongChoices
+        question.image || '',
+        correct.text || '',
+        correct.image || '',
+        ...wrongChoices.map((choice) => `${choice.text}|${choice.image}`)
       ].join('|');
 
       return {
         key,
         genre: question.genre || '',
         question: question.question,
+        image: question.image || '',
         choices: [
-          { text: correctChoice, correct: true },
-          ...wrongChoices.map((text) => ({ text, correct: false }))
+          { text: correct.text || '', image: correct.image || '', correct: true },
+          ...wrongChoices.map((choice) => ({ text: choice.text, image: choice.image, correct: false }))
         ],
         explanation: question.explanation || '',
         savedAt: new Date().toISOString()
