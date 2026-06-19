@@ -503,6 +503,7 @@
 
     const sampleConfig = {
       settings: {
+        title: '4択クイズ',
         appTitle: '4択クイズ',
         appSubtitle: 'ジャンル、問題数、制限時間を選んでスタート。',
         topImage: '',
@@ -732,10 +733,10 @@
     }
 
     function applySettings(settings) {
-      appTitle.textContent = getSetting(settings, ['appTitle'], '4択クイズ');
+      appTitle.textContent = getSetting(settings, ['title', 'appTitle'], '4択クイズ');
       appSubtitle.textContent = getSetting(settings, ['appSubtitle'], 'ジャンル、問題数、制限時間を選んでスタート。');
       topImage.src = getSetting(settings, ['topImage'], '');
-      topImage.alt = getSetting(settings, ['appTitle'], 'TOP画像');
+      topImage.alt = getSetting(settings, ['title', 'appTitle'], 'TOP画像');
       applyBackgroundSetting(document.body, '--body-background', getSetting(settings, ['background'], ''), 'body');
       applyBackgroundSetting(document.documentElement, '--panel-background', getSetting(settings, ['panelBackground'], ''), 'panel');
 
