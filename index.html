@@ -670,6 +670,7 @@
 
     const WRONG_STORAGE_KEY = 'quizWrongQuestions';
     const ASKED_STORAGE_KEY = 'quizAskedQuestions';
+    const UNLOCKED_GENRES_STORAGE_KEY = 'quizUnlockedGenres';
     const DEFAULT_WRONG_LIMIT = 100;
     const DEFAULT_ASKED_LIMIT = 300;
 
@@ -693,6 +694,9 @@
 
     let config = null;
     let selectedGenreSheets = new Set();
+    let unlockedGenres = [];
+    let allGenreClickCount = 0;
+    let unlockInputVisible = false;
     let selectedCount = 10;
     let selectedTimer = 0;
     let customCountActive = false;
@@ -760,6 +764,18 @@
         return Promise.resolve(sampleArticles[params.sheet]);
       }
 
+      if (action === 'unlock') {
+        const code = String(params.code || '').replace(/^#/, '');
+        if (code === '5923') {
+          return Promise.resolve({
+            genres: [
+              { label: '隠しジャンル', sheet: 't隠しジャンル#5923', count: 3 }
+            ]
+          });
+        }
+        return Promise.resolve({ genres: [] });
+      }
+
       return Promise.reject(new Error('unknown_action'));
     }
 
@@ -770,6 +786,8 @@
       try {
         config = await api('config');
         applySettings(config.settings || {});
+        unlockedGenres = getStoredUnlockedGenres();
+        mergeUnlockedGenres();
         selectedGenreSheets = new Set(config.genres.map((genre) => genre.sheet));
         renderHome();
         loadStatus.textContent = APPS_SCRIPT_URL ? '' : 'サンプルデータで表示中です。';
@@ -914,6 +932,7 @@
     }
 
     function renderGenres() {
+      mergeUnlockedGenres();
       genreButtons.innerHTML = '';
       const totalCount = getAllQuestionCount();
       const allSelected = selectedGenreSheets.size === config.genres.length && config.genres.length > 0;
@@ -940,6 +959,10 @@
       allButton.className = `option-button ${allSelected ? 'selected' : ''}`;
       allButton.textContent = `すべて（${totalCount}問）`;
       allButton.addEventListener('click', () => {
+        allGenreClickCount += 1;
+        if (allGenreClickCount >= 5) {
+          unlockInputVisible = true;
+        }
         selectedGenreSheets = allSelected
           ? new Set()
           : new Set(config.genres.map((genre) => genre.sheet));
@@ -947,6 +970,80 @@
         renderHome();
       });
       genreButtons.appendChild(allButton);
+
+      if (unlockInputVisible) {
+        const input = document.createElement('input');
+        input.className = 'number-input';
+        input.type = 'text';
+        input.placeholder = '合言葉を入力';
+        input.autocomplete = 'off';
+        input.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter') {
+            unlockHiddenGenres(input.value);
+          }
+        });
+        genreButtons.appendChild(input);
+
+        const unlockButton = document.createElement('button');
+        unlockButton.type = 'button';
+        unlockButton.className = 'option-button';
+        unlockButton.textContent = '解除';
+        unlockButton.addEventListener('click', () => unlockHiddenGenres(input.value));
+        genreButtons.appendChild(unlockButton);
+      }
+    }
+
+    async function unlockHiddenGenres(code) {
+      const normalizedCode = String(code || '').trim().replace(/^#/, '');
+      if (!normalizedCode) {
+        return;
+      }
+
+      try {
+        const data = await api('unlock', { code: normalizedCode });
+        const genres = data.genres || [];
+        if (genres.length === 0) {
+          loadStatus.textContent = '一致する隠しジャンルはありません。';
+          return;
+        }
+
+        unlockedGenres = mergeGenreLists(unlockedGenres, genres);
+        saveUnlockedGenres();
+        mergeUnlockedGenres();
+        genres.forEach((genre) => selectedGenreSheets.add(genre.sheet));
+        normalizeSelectedCount();
+        loadStatus.textContent = `${genres.length}件の隠しジャンルを解除しました。`;
+        renderHome();
+      } catch (error) {
+        loadStatus.textContent = `隠しジャンルの解除に失敗しました: ${error.message}`;
+      }
+    }
+
+    function mergeUnlockedGenres() {
+      config.genres = mergeGenreLists(config.genres || [], unlockedGenres);
+    }
+
+    function mergeGenreLists(baseGenres, extraGenres) {
+      const map = new Map();
+      [...baseGenres, ...extraGenres].forEach((genre) => {
+        if (genre && genre.sheet) {
+          map.set(genre.sheet, genre);
+        }
+      });
+      return [...map.values()];
+    }
+
+    function getStoredUnlockedGenres() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(UNLOCKED_GENRES_STORAGE_KEY) || '[]');
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function saveUnlockedGenres() {
+      localStorage.setItem(UNLOCKED_GENRES_STORAGE_KEY, JSON.stringify(unlockedGenres));
     }
 
     function renderCounts() {
