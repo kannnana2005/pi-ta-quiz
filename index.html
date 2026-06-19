@@ -1,0 +1,1345 @@
+﻿<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>4択クイズ</title>
+  <style>
+    :root {
+      --bg: #f5f7f3;
+      --surface: #ffffff;
+      --text: #172021;
+      --muted: #667376;
+      --line: #d9e0dd;
+      --primary: #14777b;
+      --primary-dark: #0e5c60;
+      --primary-soft: #dff3f1;
+      --accent: #d96a37;
+      --correct: #137a3b;
+      --correct-soft: #e3f5ea;
+      --wrong: #b3261e;
+      --wrong-soft: #ffe7e2;
+      --shadow: 0 18px 45px rgba(23, 32, 33, 0.12);
+      --body-background:
+        linear-gradient(135deg, rgba(20, 119, 123, 0.13), transparent 36%),
+        linear-gradient(315deg, rgba(217, 106, 55, 0.12), transparent 34%),
+        var(--bg);
+      --panel-background: var(--surface);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: var(--body-background);
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      padding: 18px;
+    }
+
+    main {
+      width: min(900px, 100%);
+      margin: 0 auto;
+    }
+
+    .shell {
+      min-height: calc(100vh - 36px);
+      background: var(--panel-background);
+      background-size: cover;
+      background-position: center;
+      border: 1px solid rgba(217, 224, 221, 0.9);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: clamp(20px, 4vw, 36px);
+    }
+
+    .view {
+      display: none;
+    }
+
+    .view.active {
+      display: block;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(30px, 7vw, 50px);
+      line-height: 1.1;
+    }
+
+    h2 {
+      margin: 28px 0 12px;
+      font-size: 18px;
+    }
+
+    p {
+      line-height: 1.65;
+    }
+
+    .lead {
+      margin: 0;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .top-image {
+      width: 100%;
+      max-height: 220px;
+      object-fit: cover;
+      border-radius: 8px;
+      margin: 22px 0 0;
+      border: 1px solid var(--line);
+      display: none;
+    }
+
+    .top-image[src]:not([src=""]) {
+      display: block;
+    }
+
+    .notice {
+      margin: 24px 0;
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid rgba(217, 106, 55, 0.25);
+      background: #fff3ec;
+    }
+
+    .notice h2 {
+      margin: 0 0 6px;
+      color: #8f3f1b;
+    }
+
+    .notice p {
+      margin: 6px 0 0;
+    }
+
+    .button-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 12px;
+    }
+
+    .option-button,
+    .choice,
+    .primary-button,
+    .secondary-button,
+    .number-input {
+      border-radius: 8px;
+      font: inherit;
+      font-weight: 800;
+    }
+
+    .option-button {
+      min-height: 54px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--text);
+      padding: 10px 12px;
+      cursor: pointer;
+    }
+
+    .option-button.selected {
+      border-color: var(--primary);
+      background: var(--primary-soft);
+      color: var(--primary-dark);
+    }
+
+    .option-button:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+
+    .number-input {
+      width: 100%;
+      min-height: 54px;
+      border: 1px solid var(--line);
+      padding: 0 14px;
+      color: var(--text);
+      background: #fff;
+    }
+
+    .inline-input {
+      margin-top: 12px;
+      max-width: 220px;
+    }
+
+    .hint {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 28px;
+    }
+
+    .primary-button,
+    .secondary-button {
+      min-height: 50px;
+      border: 0;
+      padding: 0 20px;
+      cursor: pointer;
+    }
+
+    .primary-button {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .primary-button:hover:not(:disabled) {
+      background: var(--primary-dark);
+    }
+
+    .secondary-button {
+      background: #eef2ef;
+      color: var(--text);
+    }
+
+    .primary-button:disabled,
+    .secondary-button:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      color: var(--muted);
+      font-weight: 800;
+      margin-bottom: 12px;
+    }
+
+    .progress {
+      height: 9px;
+      background: #e8ede9;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+
+    .progress span {
+      display: block;
+      height: 100%;
+      width: 0;
+      background: var(--primary);
+      transition: width 180ms ease;
+    }
+
+    .timer {
+      margin-bottom: 22px;
+      color: var(--accent);
+      font-weight: 900;
+    }
+
+    .question {
+      margin: 0 0 24px;
+      font-size: clamp(21px, 4vw, 30px);
+      line-height: 1.45;
+      font-weight: 900;
+    }
+
+    .choices {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+
+    .choice {
+      width: 100%;
+      min-height: 62px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--text);
+      display: grid;
+      grid-template-columns: 34px 1fr 28px;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 16px;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .choice:hover:not(:disabled) {
+      border-color: var(--primary);
+    }
+
+    .choice:disabled {
+      cursor: default;
+    }
+
+    .choice-letter {
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      background: var(--primary-soft);
+      color: var(--primary-dark);
+      font-weight: 900;
+    }
+
+    .choice-text {
+      overflow-wrap: anywhere;
+    }
+
+    .choice-mark {
+      font-size: 22px;
+      text-align: center;
+    }
+
+    .choice.correct {
+      background: var(--correct-soft);
+      border-color: transparent;
+      color: var(--correct);
+    }
+
+    .choice.wrong {
+      background: var(--wrong-soft);
+      border-color: transparent;
+      color: var(--wrong);
+    }
+
+    .answer {
+      min-height: 98px;
+      visibility: hidden;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+      border: 1px solid transparent;
+    }
+
+    .answer.visible {
+      visibility: visible;
+    }
+
+    .answer.correct {
+      background: var(--correct-soft);
+      border-color: rgba(19, 122, 59, 0.25);
+      color: var(--correct);
+    }
+
+    .answer.wrong {
+      background: var(--wrong-soft);
+      border-color: rgba(179, 38, 30, 0.25);
+      color: var(--wrong);
+    }
+
+    .answer-title {
+      margin: 0 0 6px;
+      font-size: 19px;
+      font-weight: 900;
+    }
+
+    .answer-text {
+      margin: 0;
+      color: var(--text);
+    }
+
+    .center {
+      text-align: center;
+    }
+
+    .result-score {
+      margin: 20px 0 8px;
+      font-size: clamp(42px, 10vw, 74px);
+      line-height: 1;
+      font-weight: 900;
+      color: var(--primary-dark);
+    }
+
+    .article-lines {
+      display: grid;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .article-lines p {
+      margin: 0;
+      padding: 12px 14px;
+      border-left: 4px solid var(--primary);
+      background: #f7faf8;
+      border-radius: 6px;
+    }
+
+    .status {
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    @media (max-width: 560px) {
+      body {
+        padding: 10px;
+      }
+
+      .shell {
+        min-height: calc(100vh - 20px);
+      }
+
+      .button-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .inline-input {
+        max-width: none;
+      }
+
+      .actions {
+        display: grid;
+      }
+
+      .primary-button,
+      .secondary-button {
+        width: 100%;
+      }
+
+      .choice {
+        grid-template-columns: 32px 1fr 24px;
+        padding: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="shell">
+      <div id="homeView" class="view active">
+        <h1 id="appTitle">4択クイズ</h1>
+        <p id="appSubtitle" class="lead">ジャンル、問題数、制限時間を選んでスタート。</p>
+        <img id="topImage" class="top-image" src="" alt="">
+        <div id="notice" class="notice" hidden></div>
+        <p id="loadStatus" class="status">設定を読み込んでいます。</p>
+
+        <h2>ジャンル</h2>
+        <div id="genreButtons" class="button-grid"></div>
+
+        <h2>問題数</h2>
+        <div id="countButtons" class="button-grid"></div>
+        <input id="customCountInput" class="number-input inline-input" type="number" inputmode="numeric" min="1" placeholder="任意の問題数" hidden>
+        <p id="countHint" class="hint"></p>
+
+        <h2>制限時間</h2>
+        <div id="timerButtons" class="button-grid"></div>
+        <input id="customTimerInput" class="number-input inline-input" type="number" inputmode="numeric" min="1" placeholder="任意の秒数" hidden>
+
+        <h2 id="articleHeading" hidden>案内</h2>
+        <div id="articleButtons" class="button-grid"></div>
+
+        <div class="actions">
+          <button id="startButton" class="primary-button" type="button" disabled>スタート</button>
+          <button id="reviewButton" class="secondary-button" type="button" disabled>間違えた問題を復習</button>
+          <button id="historyButton" class="secondary-button" type="button">履歴を見る</button>
+          <button id="reloadButton" class="secondary-button" type="button">再読み込み</button>
+        </div>
+      </div>
+
+      <div id="quizView" class="view">
+        <div class="topbar">
+          <span id="questionCount">Q1 / 10</span>
+          <span id="scoreText">Score 0</span>
+        </div>
+        <div class="progress" aria-hidden="true">
+          <span id="progressBar"></span>
+        </div>
+        <div id="timerText" class="timer"></div>
+        <p id="questionText" class="question"></p>
+        <div id="choices" class="choices"></div>
+        <div id="answer" class="answer" aria-live="polite">
+          <p id="answerTitle" class="answer-title"></p>
+          <p id="answerText" class="answer-text"></p>
+        </div>
+        <div class="actions">
+          <button id="nextButton" class="primary-button" type="button" disabled>次の問題へ</button>
+          <button id="quitButton" class="secondary-button" type="button">TOPへ戻る</button>
+        </div>
+      </div>
+
+      <div id="resultView" class="view center">
+        <h1>結果</h1>
+        <div id="resultScore" class="result-score"></div>
+        <p id="resultMessage" class="lead"></p>
+        <div class="actions">
+          <button id="resultReviewButton" class="primary-button" type="button" disabled>間違えた問題を復習</button>
+          <button id="homeButton" class="secondary-button" type="button">TOPへ戻る</button>
+        </div>
+      </div>
+
+      <div id="articleView" class="view">
+        <h1 id="articleTitle"></h1>
+        <div id="articleLines" class="article-lines"></div>
+        <div class="actions">
+          <button id="articleBackButton" class="secondary-button" type="button">TOPへ戻る</button>
+        </div>
+      </div>
+
+      <div id="historyView" class="view">
+        <h1>履歴</h1>
+        <h2>間違えた問題</h2>
+        <div id="wrongHistoryLines" class="article-lines"></div>
+        <h2>過去に出題された問題</h2>
+        <div id="askedHistoryLines" class="article-lines"></div>
+        <div class="actions">
+          <button id="clearHistoryButton" class="secondary-button" type="button">履歴を消す</button>
+          <button id="historyBackButton" class="secondary-button" type="button">TOPへ戻る</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Apps Scriptをウェブアプリとして公開したURLをここに入れてください。
+    // 例: https://script.google.com/macros/s/xxxxx/exec
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzBy-YMHne9CyPt0rZpk_1sDVQJEDucxfCm35C3Zbm3lx_it_yxT4svGAQlm3Ux3B4m6Q/exec';
+
+    const sampleConfig = {
+      settings: {
+        appTitle: '4択クイズ',
+        appSubtitle: 'ジャンル、問題数、制限時間を選んでスタート。',
+        topImage: '',
+        background: '',
+        panelBackground: '',
+        defaultQuestionCount: '10',
+        defaultTimeLimit: '0',
+        showNotice: 'true',
+        '間違えた問題の保存上限': '100',
+        '出題済み問題の保存上限': '300',
+        '履歴機能の表示': 't',
+        '復習ボタンの表示': 't'
+      },
+      genres: [
+        { label: '国語', sheet: 't国語', count: 12 },
+        { label: '数学', sheet: 't数学', count: 8 },
+        { label: '社会', sheet: 't社会', count: 10 },
+        { label: '雑学', sheet: 't雑学', count: 15 }
+      ],
+      articles: [
+        { label: '遊び方', sheet: 'a遊び方' },
+        { label: 'このアプリについて', sheet: 'aこのアプリについて' }
+      ],
+      notice: {
+        title: 'お知らせ',
+        body: ['Apps Script URLを入れると、スプレッドシートの内容で動きます。']
+      }
+    };
+
+    const sampleQuestions = [
+      {
+        question: '日本で一番高い山はどれ？',
+        choices: [
+          { text: '富士山', correct: true },
+          { text: '北岳', correct: false },
+          { text: '槍ヶ岳', correct: false },
+          { text: '穂高岳', correct: false }
+        ],
+        explanation: '富士山の標高は3,776mで、日本で最も高い山です。'
+      },
+      {
+        question: '世界で最も面積が大きい国はどれ？',
+        choices: [
+          { text: 'ロシア', correct: true },
+          { text: 'カナダ', correct: false },
+          { text: '中国', correct: false },
+          { text: 'アメリカ', correct: false }
+        ],
+        explanation: 'ロシアは世界最大の面積を持つ国です。'
+      },
+      {
+        question: '「光年」は何を表す単位？',
+        choices: [
+          { text: '距離', correct: true },
+          { text: '時間', correct: false },
+          { text: '明るさ', correct: false },
+          { text: '重さ', correct: false }
+        ],
+        explanation: '光年は、光が1年間に進む距離を表す単位です。'
+      }
+    ];
+
+    const sampleArticles = {
+      'a遊び方': {
+        title: '遊び方',
+        lines: ['ジャンルを選んでスタートします。', '4つの選択肢から正解を選んでください。', '間違えた問題はあとで復習できます。']
+      },
+      'aこのアプリについて': {
+        title: 'このアプリについて',
+        lines: ['Googleスプレッドシートから問題を読み込む4択クイズです。']
+      }
+    };
+
+    const homeView = document.querySelector('#homeView');
+    const quizView = document.querySelector('#quizView');
+    const resultView = document.querySelector('#resultView');
+    const articleView = document.querySelector('#articleView');
+    const historyView = document.querySelector('#historyView');
+    const appTitle = document.querySelector('#appTitle');
+    const appSubtitle = document.querySelector('#appSubtitle');
+    const topImage = document.querySelector('#topImage');
+    const notice = document.querySelector('#notice');
+    const loadStatus = document.querySelector('#loadStatus');
+    const genreButtons = document.querySelector('#genreButtons');
+    const countButtons = document.querySelector('#countButtons');
+    const customCountInput = document.querySelector('#customCountInput');
+    const countHint = document.querySelector('#countHint');
+    const timerButtons = document.querySelector('#timerButtons');
+    const customTimerInput = document.querySelector('#customTimerInput');
+    const articleHeading = document.querySelector('#articleHeading');
+    const articleButtons = document.querySelector('#articleButtons');
+    const startButton = document.querySelector('#startButton');
+    const reviewButton = document.querySelector('#reviewButton');
+    const historyButton = document.querySelector('#historyButton');
+    const reloadButton = document.querySelector('#reloadButton');
+    const questionCount = document.querySelector('#questionCount');
+    const scoreText = document.querySelector('#scoreText');
+    const progressBar = document.querySelector('#progressBar');
+    const timerText = document.querySelector('#timerText');
+    const questionText = document.querySelector('#questionText');
+    const choicesElement = document.querySelector('#choices');
+    const answer = document.querySelector('#answer');
+    const answerTitle = document.querySelector('#answerTitle');
+    const answerText = document.querySelector('#answerText');
+    const nextButton = document.querySelector('#nextButton');
+    const quitButton = document.querySelector('#quitButton');
+    const resultScore = document.querySelector('#resultScore');
+    const resultMessage = document.querySelector('#resultMessage');
+    const resultReviewButton = document.querySelector('#resultReviewButton');
+    const homeButton = document.querySelector('#homeButton');
+    const articleTitle = document.querySelector('#articleTitle');
+    const articleLines = document.querySelector('#articleLines');
+    const articleBackButton = document.querySelector('#articleBackButton');
+    const wrongHistoryLines = document.querySelector('#wrongHistoryLines');
+    const askedHistoryLines = document.querySelector('#askedHistoryLines');
+    const clearHistoryButton = document.querySelector('#clearHistoryButton');
+    const historyBackButton = document.querySelector('#historyBackButton');
+
+    const WRONG_STORAGE_KEY = 'quizWrongQuestions';
+    const ASKED_STORAGE_KEY = 'quizAskedQuestions';
+    const DEFAULT_WRONG_LIMIT = 100;
+    const DEFAULT_ASKED_LIMIT = 300;
+
+    const questionCountOptions = [
+      { label: '10問', value: 10 },
+      { label: '20問', value: 20 },
+      { label: '30問', value: 30 },
+      { label: '50問', value: 50 },
+      { label: '全問', value: 'all' },
+      { label: '任意', value: 'custom' }
+    ];
+
+    const timerOptions = [
+      { label: 'なし', value: 0 },
+      { label: '10秒', value: 10 },
+      { label: '20秒', value: 20 },
+      { label: '30秒', value: 30 },
+      { label: '60秒', value: 60 },
+      { label: '任意', value: 'custom' }
+    ];
+
+    let config = null;
+    let selectedGenreSheets = new Set();
+    let selectedCount = 10;
+    let selectedTimer = 0;
+    let customCountActive = false;
+    let customTimerActive = false;
+    let activeQuestions = [];
+    let currentIndex = 0;
+    let score = 0;
+    let answered = false;
+    let wrongQuestions = [];
+    let reviewQuestions = [];
+    let timerId = null;
+    let remainingSeconds = 0;
+
+    function showView(view) {
+      [homeView, quizView, resultView, articleView, historyView].forEach((element) => {
+        element.classList.remove('active');
+      });
+      view.classList.add('active');
+    }
+
+    async function api(action, params = {}) {
+      if (!APPS_SCRIPT_URL) {
+        return sampleApi(action, params);
+      }
+
+      const url = new URL(APPS_SCRIPT_URL);
+      url.searchParams.set('action', action);
+      Object.entries(params).forEach(([key, value]) => {
+        url.searchParams.set(key, value);
+      });
+
+      const response = await fetch(url.toString(), { cache: 'no-store' });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      return data;
+    }
+
+    function sampleApi(action, params) {
+      if (action === 'config') {
+        return Promise.resolve(sampleConfig);
+      }
+
+      if (action === 'questions') {
+        const requestedSheets = String(params.sheets || params.sheet || '')
+          .split(',')
+          .filter(Boolean);
+        const questions = requestedSheets.flatMap((sheet) => (
+          sampleQuestions.map((question, index) => ({
+            ...question,
+            question: `${sampleConfig.genres.find((genre) => genre.sheet === sheet)?.label || 'サンプル'}: ${question.question}`,
+            id: `${sheet}-${index}`
+          }))
+        ));
+        return Promise.resolve({ questions });
+      }
+
+      if (action === 'article') {
+        return Promise.resolve(sampleArticles[params.sheet]);
+      }
+
+      return Promise.reject(new Error('unknown_action'));
+    }
+
+    async function loadConfig() {
+      loadStatus.textContent = '設定を読み込んでいます。';
+      startButton.disabled = true;
+
+      try {
+        config = await api('config');
+        applySettings(config.settings || {});
+        selectedGenreSheets = new Set(config.genres.map((genre) => genre.sheet));
+        renderHome();
+        loadStatus.textContent = APPS_SCRIPT_URL ? '' : 'サンプルデータで表示中です。';
+      } catch (error) {
+        loadStatus.textContent = `読み込みに失敗しました: ${error.message}`;
+      }
+    }
+
+    function applySettings(settings) {
+      appTitle.textContent = getSetting(settings, ['appTitle'], '4択クイズ');
+      appSubtitle.textContent = getSetting(settings, ['appSubtitle'], 'ジャンル、問題数、制限時間を選んでスタート。');
+      topImage.src = getSetting(settings, ['topImage'], '');
+      topImage.alt = getSetting(settings, ['appTitle'], 'TOP画像');
+      applyBackgroundSetting(document.body, '--body-background', getSetting(settings, ['background'], ''), 'body');
+      applyBackgroundSetting(document.documentElement, '--panel-background', getSetting(settings, ['panelBackground'], ''), 'panel');
+
+      const defaultCountText = getSetting(settings, ['defaultQuestionCount'], '10');
+      const defaultCount = parseInt(defaultCountText, 10);
+      selectedCount = Number.isNaN(defaultCount) ? 10 : defaultCount;
+      if (String(defaultCountText).toLowerCase() === 'all') {
+        selectedCount = 'all';
+      }
+
+      const defaultTimeLimit = parseInt(getSetting(settings, ['defaultTimeLimit'], '0'), 10);
+      selectedTimer = Number.isNaN(defaultTimeLimit) ? 0 : defaultTimeLimit;
+    }
+
+    function getSetting(settings, keys, fallback = '') {
+      for (const key of keys) {
+        const value = settings[key];
+        if (value !== undefined && value !== null && String(value).trim() !== '') {
+          return String(value).trim();
+        }
+      }
+      return fallback;
+    }
+
+    function getNumberSetting(keys, fallback) {
+      const value = parseInt(getSetting(config.settings || {}, keys, String(fallback)), 10);
+      return Number.isNaN(value) ? fallback : Math.max(value, 0);
+    }
+
+    function getFlagSetting(keys, fallback) {
+      const value = getSetting(config.settings || {}, keys, fallback ? 't' : 'f').toLowerCase();
+      return ['t', 'true', '1', 'yes', 'on', '表示'].includes(value);
+    }
+
+    function getWrongLimit() {
+      return getNumberSetting(['間違えた問題の保存上限', 'wrongHistoryLimit'], DEFAULT_WRONG_LIMIT);
+    }
+
+    function getAskedLimit() {
+      return getNumberSetting(['出題済み問題の保存上限', 'askedHistoryLimit'], DEFAULT_ASKED_LIMIT);
+    }
+
+    function shouldShowHistory() {
+      return getFlagSetting(['履歴機能の表示', 'showHistory'], true);
+    }
+
+    function shouldShowReview() {
+      return getFlagSetting(['復習ボタンの表示', 'showReview'], true);
+    }
+
+    function applyBackgroundSetting(target, propertyName, value, fallbackType) {
+      const normalized = normalizeBackgroundValue(value, fallbackType);
+      target.style.setProperty(propertyName, normalized);
+    }
+
+    function normalizeBackgroundValue(value, fallbackType) {
+      const text = String(value || '').trim();
+      if (!text) {
+        return fallbackType === 'body'
+          ? 'linear-gradient(135deg, rgba(20, 119, 123, 0.13), transparent 36%), linear-gradient(315deg, rgba(217, 106, 55, 0.12), transparent 34%), var(--bg)'
+          : 'var(--surface)';
+      }
+
+      if (isLikelyImageUrl(text)) {
+        return `url("${text.replace(/"/g, '\\"')}")`;
+      }
+
+      return normalizeColor(text);
+    }
+
+    function isLikelyImageUrl(value) {
+      return /^https?:\/\//i.test(value)
+        || /^data:image\//i.test(value)
+        || /\.(png|jpe?g|webp|gif|svg)(\?.*)?$/i.test(value);
+    }
+
+    function normalizeColor(value) {
+      if (/^[0-9a-f]{3}$/i.test(value) || /^[0-9a-f]{6}$/i.test(value)) {
+        return `#${value}`;
+      }
+
+      return value;
+    }
+
+    function renderHome() {
+      renderNotice();
+      renderGenres();
+      renderCounts();
+      renderTimers();
+      renderArticles();
+
+      startButton.disabled = selectedGenreSheets.size === 0 || getSelectedTotalCount() === 0;
+      reviewButton.hidden = !shouldShowReview();
+      reviewButton.disabled = getStoredQuestions(WRONG_STORAGE_KEY).length === 0;
+      historyButton.hidden = !shouldShowHistory();
+    }
+
+    function renderNotice() {
+      const showNotice = String(config.settings?.showNotice ?? 'true').toLowerCase() !== 'false';
+      if (!showNotice || !config.notice) {
+        notice.hidden = true;
+        notice.innerHTML = '';
+        return;
+      }
+
+      notice.hidden = false;
+      const body = config.notice.body || [];
+      notice.innerHTML = `
+        <h2></h2>
+        ${body.slice(0, 2).map(() => '<p></p>').join('')}
+      `;
+      notice.querySelector('h2').textContent = config.notice.title;
+      [...notice.querySelectorAll('p')].forEach((p, index) => {
+        p.textContent = body[index];
+      });
+    }
+
+    function renderGenres() {
+      genreButtons.innerHTML = '';
+      const totalCount = getAllQuestionCount();
+      const allSelected = selectedGenreSheets.size === config.genres.length && config.genres.length > 0;
+
+      config.genres.forEach((genre) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `option-button ${selectedGenreSheets.has(genre.sheet) ? 'selected' : ''}`;
+        button.textContent = `${genre.label}（${genre.count || 0}問）`;
+        button.addEventListener('click', () => {
+          if (selectedGenreSheets.has(genre.sheet)) {
+            selectedGenreSheets.delete(genre.sheet);
+          } else {
+            selectedGenreSheets.add(genre.sheet);
+          }
+          normalizeSelectedCount();
+          renderHome();
+        });
+        genreButtons.appendChild(button);
+      });
+
+      const allButton = document.createElement('button');
+      allButton.type = 'button';
+      allButton.className = `option-button ${allSelected ? 'selected' : ''}`;
+      allButton.textContent = `すべて（${totalCount}問）`;
+      allButton.addEventListener('click', () => {
+        selectedGenreSheets = allSelected
+          ? new Set()
+          : new Set(config.genres.map((genre) => genre.sheet));
+        normalizeSelectedCount();
+        renderHome();
+      });
+      genreButtons.appendChild(allButton);
+    }
+
+    function renderCounts() {
+      const maxCount = getSelectedTotalCount();
+      countButtons.innerHTML = '';
+      customCountInput.max = Math.max(maxCount, 1);
+      customCountInput.disabled = maxCount === 0;
+      customCountInput.hidden = !customCountActive;
+      countHint.textContent = maxCount > 0
+        ? `選択中のジャンルは合計${maxCount}問です。任意入力は1〜${maxCount}まで使えます。`
+        : 'ジャンルを選ぶと問題数を指定できます。';
+
+      questionCountOptions.forEach((option) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        const isSelected = option.value === 'custom'
+          ? customCountActive
+          : selectedCount === option.value && !customCountActive;
+        button.className = `option-button ${isSelected ? 'selected' : ''}`;
+        button.textContent = option.value === 'all' ? `全問（${maxCount}問）` : option.label;
+        button.disabled = maxCount === 0 || (typeof option.value === 'number' && option.value > maxCount);
+        button.addEventListener('click', () => {
+          if (option.value === 'custom') {
+            customCountActive = true;
+            if (!customCountInput.value) {
+              customCountInput.value = String(Math.min(10, Math.max(maxCount, 1)));
+            }
+            selectedCount = parseInt(customCountInput.value, 10);
+            renderHome();
+            customCountInput.focus();
+            return;
+          }
+          customCountActive = false;
+          selectedCount = option.value;
+          customCountInput.value = '';
+          renderHome();
+        });
+        countButtons.appendChild(button);
+      });
+
+      if (typeof selectedCount === 'number' && customCountInput.value) {
+        customCountInput.value = String(Math.min(Math.max(selectedCount, 1), Math.max(maxCount, 1)));
+      }
+    }
+
+    function renderTimers() {
+      timerButtons.innerHTML = '';
+      customTimerInput.hidden = !customTimerActive;
+
+      timerOptions.forEach((option) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        const isSelected = option.value === 'custom'
+          ? customTimerActive
+          : selectedTimer === option.value && !customTimerActive;
+        button.className = `option-button ${isSelected ? 'selected' : ''}`;
+        button.textContent = option.label;
+        button.addEventListener('click', () => {
+          if (option.value === 'custom') {
+            customTimerActive = true;
+            if (!customTimerInput.value) {
+              customTimerInput.value = '45';
+            }
+            selectedTimer = Math.max(parseInt(customTimerInput.value, 10) || 1, 1);
+            renderHome();
+            customTimerInput.focus();
+            return;
+          }
+          customTimerActive = false;
+          selectedTimer = option.value;
+          customTimerInput.value = '';
+          renderHome();
+        });
+        timerButtons.appendChild(button);
+      });
+    }
+
+    function renderOptionButtons(container, options, selectedValue, onSelect) {
+      container.innerHTML = '';
+
+      options.forEach((option) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'option-button';
+        button.textContent = option.label;
+        const value = option.sheet || option.value;
+        if (value === selectedValue) {
+          button.classList.add('selected');
+        }
+        button.addEventListener('click', () => onSelect(option));
+        container.appendChild(button);
+      });
+    }
+
+    function renderArticles() {
+      const articles = config.articles || [];
+      articleButtons.innerHTML = '';
+      articleHeading.hidden = articles.length === 0;
+
+      articles.forEach((article) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'option-button';
+        button.textContent = article.label;
+        button.addEventListener('click', () => openArticle(article));
+        articleButtons.appendChild(button);
+      });
+    }
+
+    function getAllQuestionCount() {
+      return config.genres.reduce((sum, genre) => sum + Number(genre.count || 0), 0);
+    }
+
+    function getSelectedTotalCount() {
+      return config.genres.reduce((sum, genre) => (
+        selectedGenreSheets.has(genre.sheet) ? sum + Number(genre.count || 0) : sum
+      ), 0);
+    }
+
+    function normalizeSelectedCount() {
+      const maxCount = getSelectedTotalCount();
+      if (selectedCount !== 'all' && selectedCount > maxCount) {
+        selectedCount = maxCount || 1;
+      }
+      if (customCountActive && customCountInput.value) {
+        const value = parseInt(customCountInput.value, 10);
+        customCountInput.value = String(Math.min(Math.max(value || 1, 1), Math.max(maxCount, 1)));
+        selectedCount = parseInt(customCountInput.value, 10);
+      }
+    }
+
+    async function startQuiz({ review = false } = {}) {
+      try {
+        if (review) {
+          activeQuestions = shuffle(getStoredQuestions(WRONG_STORAGE_KEY)).map(cloneQuestion);
+        } else {
+          const sheets = [...selectedGenreSheets].join(',');
+          const data = await api('questions', { sheets });
+          const shuffledQuestions = shuffle(data.questions.map(cloneQuestion));
+          activeQuestions = selectedCount === 'all'
+            ? shuffledQuestions
+            : shuffledQuestions.slice(0, Math.min(selectedCount, shuffledQuestions.length));
+          wrongQuestions = [];
+        }
+
+        if (activeQuestions.length === 0) {
+          loadStatus.textContent = '出題できる問題がありません。';
+          showView(homeView);
+          return;
+        }
+
+        currentIndex = 0;
+        score = 0;
+        answered = false;
+        showView(quizView);
+        renderQuestion();
+      } catch (error) {
+        loadStatus.textContent = `問題の読み込みに失敗しました: ${error.message}`;
+        showView(homeView);
+      }
+    }
+
+    function cloneQuestion(question) {
+      return {
+        question: question.question,
+        genre: question.genre || '',
+        choices: shuffle(question.choices),
+        explanation: question.explanation || '',
+      };
+    }
+
+    function renderQuestion() {
+      clearTimer();
+      const current = activeQuestions[currentIndex];
+      answered = false;
+      questionCount.textContent = `Q${currentIndex + 1} / ${activeQuestions.length}`;
+      scoreText.textContent = `Score ${score}`;
+      progressBar.style.width = `${((currentIndex + 1) / activeQuestions.length) * 100}%`;
+      questionText.textContent = current.question;
+      choicesElement.innerHTML = '';
+      answer.className = 'answer';
+      answerTitle.textContent = '';
+      answerText.textContent = '';
+      nextButton.disabled = true;
+      nextButton.textContent = currentIndex === activeQuestions.length - 1 ? '結果を見る' : '次の問題へ';
+
+      current.choices.forEach((choice, index) => {
+        const button = document.createElement('button');
+        button.className = 'choice';
+        button.type = 'button';
+        button.innerHTML = `
+          <span class="choice-letter">${String.fromCharCode(65 + index)}</span>
+          <span class="choice-text"></span>
+          <span class="choice-mark" aria-hidden="true"></span>
+        `;
+        button.querySelector('.choice-text').textContent = choice.text;
+        button.addEventListener('click', () => selectAnswer(index, false));
+        choicesElement.appendChild(button);
+      });
+
+      startTimer();
+    }
+
+    function startTimer() {
+      if (!selectedTimer) {
+        timerText.textContent = '';
+        return;
+      }
+
+      remainingSeconds = selectedTimer;
+      timerText.textContent = `残り ${remainingSeconds} 秒`;
+      timerId = window.setInterval(() => {
+        remainingSeconds -= 1;
+        timerText.textContent = `残り ${remainingSeconds} 秒`;
+
+        if (remainingSeconds <= 0) {
+          selectAnswer(-1, true);
+        }
+      }, 1000);
+    }
+
+    function clearTimer() {
+      if (timerId) {
+        window.clearInterval(timerId);
+        timerId = null;
+      }
+    }
+
+    function selectAnswer(selectedIndex, timedOut) {
+      if (answered) {
+        return;
+      }
+
+      clearTimer();
+      answered = true;
+      const current = activeQuestions[currentIndex];
+      const correctIndex = current.choices.findIndex((choice) => choice.correct);
+      const isCorrect = selectedIndex === correctIndex;
+
+      if (isCorrect) {
+        score += 1;
+      } else {
+        wrongQuestions.push(current);
+        saveQuestionToStorage(WRONG_STORAGE_KEY, current, getWrongLimit());
+      }
+
+      saveQuestionToStorage(ASKED_STORAGE_KEY, current, getAskedLimit());
+
+      [...choicesElement.children].forEach((button, index) => {
+        button.disabled = true;
+        const mark = button.querySelector('.choice-mark');
+        if (index === correctIndex) {
+          button.classList.add('correct');
+          mark.textContent = '✓';
+        } else if (index === selectedIndex) {
+          button.classList.add('wrong');
+          mark.textContent = '×';
+        }
+      });
+
+      const correctText = current.choices[correctIndex].text;
+      answer.className = `answer visible ${isCorrect ? 'correct' : 'wrong'}`;
+      answerTitle.textContent = isCorrect ? '正解！' : timedOut ? '時間切れ' : '不正解';
+      answerText.textContent = current.explanation || `正解は「${correctText}」です。`;
+      scoreText.textContent = `Score ${score}`;
+      nextButton.disabled = false;
+    }
+
+    function goNext() {
+      if (!answered) {
+        return;
+      }
+
+      if (currentIndex === activeQuestions.length - 1) {
+        showResult();
+        return;
+      }
+
+      currentIndex += 1;
+      renderQuestion();
+    }
+
+    function showResult() {
+      clearTimer();
+      reviewQuestions = wrongQuestions.map(cloneQuestion);
+      const rate = score / activeQuestions.length;
+      let message = '伸びしろたっぷりです。復習しましょう。';
+
+      if (rate === 1) {
+        message = '満点です。すばらしい！';
+      } else if (rate >= 0.7) {
+        message = 'かなりの正答率です。';
+      } else if (rate >= 0.4) {
+        message = 'いい感じです。復習でもう一段上へ。';
+      }
+
+      resultScore.textContent = `${score} / ${activeQuestions.length}`;
+      resultMessage.textContent = message;
+      resultReviewButton.hidden = !shouldShowReview();
+      resultReviewButton.disabled = getStoredQuestions(WRONG_STORAGE_KEY).length === 0;
+      renderHome();
+      showView(resultView);
+    }
+
+    async function openArticle(article) {
+      try {
+        const data = await api('article', { sheet: article.sheet });
+        articleTitle.textContent = data.title;
+        articleLines.innerHTML = '';
+
+        data.lines.forEach((line) => {
+          const p = document.createElement('p');
+          p.textContent = line;
+          articleLines.appendChild(p);
+        });
+
+        showView(articleView);
+      } catch (error) {
+        loadStatus.textContent = `案内の読み込みに失敗しました: ${error.message}`;
+        showView(homeView);
+      }
+    }
+
+    function openHistory() {
+      renderHistoryList(wrongHistoryLines, getStoredQuestions(WRONG_STORAGE_KEY), '間違えた問題はまだありません。');
+      renderHistoryList(askedHistoryLines, getStoredQuestions(ASKED_STORAGE_KEY), '出題履歴はまだありません。');
+      showView(historyView);
+    }
+
+    function renderHistoryList(container, items, emptyText) {
+      container.innerHTML = '';
+
+      if (items.length === 0) {
+        const p = document.createElement('p');
+        p.textContent = emptyText;
+        container.appendChild(p);
+        return;
+      }
+
+      [...items].reverse().forEach((item) => {
+        const p = document.createElement('p');
+        const genre = item.genre ? `【${item.genre}】` : '';
+        p.textContent = `${genre}${item.question}`;
+        container.appendChild(p);
+      });
+    }
+
+    function saveQuestionToStorage(storageKey, question, limit) {
+      const items = getStoredQuestions(storageKey);
+      const normalized = normalizeQuestionForStorage(question);
+      const nextItems = items.filter((item) => item.key !== normalized.key);
+      nextItems.push(normalized);
+
+      while (nextItems.length > limit) {
+        nextItems.shift();
+      }
+
+      localStorage.setItem(storageKey, JSON.stringify(nextItems));
+    }
+
+    function getStoredQuestions(storageKey) {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function normalizeQuestionForStorage(question) {
+      const correctChoice = question.choices.find((choice) => choice.correct)?.text || '';
+      const wrongChoices = question.choices
+        .filter((choice) => !choice.correct)
+        .map((choice) => choice.text)
+        .sort();
+      const key = [
+        question.genre || '',
+        question.question,
+        correctChoice,
+        ...wrongChoices
+      ].join('|');
+
+      return {
+        key,
+        genre: question.genre || '',
+        question: question.question,
+        choices: [
+          { text: correctChoice, correct: true },
+          ...wrongChoices.map((text) => ({ text, correct: false }))
+        ],
+        explanation: question.explanation || '',
+        savedAt: new Date().toISOString()
+      };
+    }
+
+    function clearHistory() {
+      localStorage.removeItem(WRONG_STORAGE_KEY);
+      localStorage.removeItem(ASKED_STORAGE_KEY);
+      reviewQuestions = [];
+      renderHome();
+      openHistory();
+    }
+
+    function shuffle(array) {
+      const copied = [...array];
+      for (let index = copied.length - 1; index > 0; index -= 1) {
+        const randomIndex = Math.floor(Math.random() * (index + 1));
+        [copied[index], copied[randomIndex]] = [copied[randomIndex], copied[index]];
+      }
+      return copied;
+    }
+
+    customCountInput.addEventListener('input', () => {
+      const maxCount = getSelectedTotalCount();
+      const value = parseInt(customCountInput.value, 10);
+      if (Number.isNaN(value)) {
+        selectedCount = 10;
+        renderHome();
+        return;
+      }
+      selectedCount = Math.min(Math.max(value, 1), Math.max(maxCount, 1));
+      customCountInput.value = String(selectedCount);
+      renderHome();
+    });
+
+    customTimerInput.addEventListener('input', () => {
+      const value = parseInt(customTimerInput.value, 10);
+      if (Number.isNaN(value)) {
+        selectedTimer = 1;
+        renderHome();
+        return;
+      }
+      selectedTimer = Math.max(value, 1);
+      customTimerInput.value = String(selectedTimer);
+      renderHome();
+    });
+
+    startButton.addEventListener('click', () => startQuiz());
+    reviewButton.addEventListener('click', () => startQuiz({ review: true }));
+    resultReviewButton.addEventListener('click', () => startQuiz({ review: true }));
+    historyButton.addEventListener('click', openHistory);
+    clearHistoryButton.addEventListener('click', clearHistory);
+    reloadButton.addEventListener('click', loadConfig);
+    nextButton.addEventListener('click', goNext);
+    quitButton.addEventListener('click', () => {
+      clearTimer();
+      showView(homeView);
+    });
+    homeButton.addEventListener('click', () => showView(homeView));
+    articleBackButton.addEventListener('click', () => showView(homeView));
+    historyBackButton.addEventListener('click', () => showView(homeView));
+
+    loadConfig();
+  </script>
+</body>
+</html>
