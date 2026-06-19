@@ -125,6 +125,19 @@
       gap: 12px;
     }
 
+    .genre-unlock-row {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 4px;
+    }
+
+    .reserved-hidden {
+      visibility: hidden;
+      pointer-events: none;
+    }
+
     .option-button,
     .choice,
     .primary-button,
@@ -428,6 +441,10 @@
 
       .button-grid {
         grid-template-columns: 1fr;
+      }
+
+      .genre-unlock-row {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
       }
 
       .inline-input {
@@ -954,6 +971,9 @@
         genreButtons.appendChild(button);
       });
 
+      const unlockRow = document.createElement('div');
+      unlockRow.className = 'genre-unlock-row';
+
       const allButton = document.createElement('button');
       allButton.type = 'button';
       allButton.className = `option-button ${allSelected ? 'selected' : ''}`;
@@ -969,28 +989,30 @@
         normalizeSelectedCount();
         renderHome();
       });
-      genreButtons.appendChild(allButton);
+      unlockRow.appendChild(allButton);
 
-      if (unlockInputVisible) {
-        const input = document.createElement('input');
-        input.className = 'number-input';
-        input.type = 'text';
-        input.placeholder = '合言葉を入力';
-        input.autocomplete = 'off';
-        input.addEventListener('keydown', (event) => {
-          if (event.key === 'Enter') {
-            unlockHiddenGenres(input.value);
-          }
-        });
-        genreButtons.appendChild(input);
+      const input = document.createElement('input');
+      input.className = `number-input ${unlockInputVisible ? '' : 'reserved-hidden'}`;
+      input.type = 'text';
+      input.placeholder = '合言葉を入力';
+      input.autocomplete = 'off';
+      input.tabIndex = unlockInputVisible ? 0 : -1;
+      input.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          unlockHiddenGenres(input.value);
+        }
+      });
+      unlockRow.appendChild(input);
 
-        const unlockButton = document.createElement('button');
-        unlockButton.type = 'button';
-        unlockButton.className = 'option-button';
-        unlockButton.textContent = '解除';
-        unlockButton.addEventListener('click', () => unlockHiddenGenres(input.value));
-        genreButtons.appendChild(unlockButton);
-      }
+      const unlockButton = document.createElement('button');
+      unlockButton.type = 'button';
+      unlockButton.className = `option-button ${unlockInputVisible ? '' : 'reserved-hidden'}`;
+      unlockButton.textContent = '解除';
+      unlockButton.tabIndex = unlockInputVisible ? 0 : -1;
+      unlockButton.addEventListener('click', () => unlockHiddenGenres(input.value));
+      unlockRow.appendChild(unlockButton);
+
+      genreButtons.appendChild(unlockRow);
     }
 
     async function unlockHiddenGenres(code) {
