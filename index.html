@@ -433,7 +433,8 @@
     body.auth-required {
       background:
         linear-gradient(90deg, rgba(8, 42, 29, 0.72), rgba(8, 42, 29, 0.22)),
-        url("assets/login-background.png");
+        url("assets/login-background.png"),
+        url("login-background.png");
       background-size: cover;
       background-position: center;
       background-attachment: fixed;
@@ -768,7 +769,6 @@
     const authButton = document.querySelector('#authButton');
     const authError = document.querySelector('#authError');
 
-    const AUTH_STORAGE_KEY = 'quizAuthToken';
     const WRONG_STORAGE_KEY = 'quizWrongQuestions';
     const ASKED_STORAGE_KEY = 'quizAskedQuestions';
     const DEFAULT_WRONG_LIMIT = 100;
@@ -809,6 +809,8 @@
     let reviewQuestions = [];
     let timerId = null;
     let remainingSeconds = 0;
+    let authToken = '';
+    let authTokenExpiresAt = 0;
 
     function showView(view) {
       [authView, homeView, quizView, resultView, articleView, historyView].forEach((element) => {
@@ -892,25 +894,22 @@
     }
 
     function getAuthToken() {
-      try {
-        const saved = JSON.parse(localStorage.getItem(AUTH_STORAGE_KEY) || 'null');
-        if (!saved || !saved.token || !saved.expiresAt || Date.now() >= saved.expiresAt) {
-          localStorage.removeItem(AUTH_STORAGE_KEY);
-          return '';
-        }
-        return saved.token;
-      } catch {
-        localStorage.removeItem(AUTH_STORAGE_KEY);
+      if (!authToken || !authTokenExpiresAt || Date.now() >= authTokenExpiresAt) {
+        authToken = '';
+        authTokenExpiresAt = 0;
         return '';
       }
+      return authToken;
     }
 
     function saveAuthToken(token, expiresAt) {
-      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ token, expiresAt }));
+      authToken = token;
+      authTokenExpiresAt = expiresAt;
     }
 
     function clearAuthToken() {
-      localStorage.removeItem(AUTH_STORAGE_KEY);
+      authToken = '';
+      authTokenExpiresAt = 0;
     }
 
     function showAuth(message = '') {
