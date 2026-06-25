@@ -430,6 +430,71 @@
       font-weight: 800;
     }
 
+    body.auth-required {
+      background:
+        linear-gradient(90deg, rgba(8, 42, 29, 0.72), rgba(8, 42, 29, 0.22)),
+        url("assets/login-background.png");
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+    }
+
+    body.auth-required .shell {
+      min-height: calc(100vh - 36px);
+      display: grid;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.14);
+      border-color: rgba(255, 255, 255, 0.32);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+      backdrop-filter: blur(12px);
+    }
+
+    .auth-view {
+      width: min(430px, 100%);
+      margin: 0 auto;
+      color: #fff;
+    }
+
+    .auth-panel {
+      padding: clamp(22px, 5vw, 34px);
+      border-radius: 8px;
+      background: rgba(12, 47, 34, 0.68);
+      border: 1px solid rgba(255, 255, 255, 0.26);
+      box-shadow: 0 18px 54px rgba(0, 0, 0, 0.3);
+    }
+
+    .auth-panel h1 {
+      font-size: clamp(30px, 8vw, 48px);
+    }
+
+    .auth-panel .lead {
+      color: rgba(255, 255, 255, 0.82);
+    }
+
+    .auth-form {
+      display: grid;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .auth-input {
+      min-height: 54px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.38);
+      background: rgba(255, 255, 255, 0.92);
+      color: var(--text);
+      padding: 0 14px;
+      font: inherit;
+      font-weight: 800;
+    }
+
+    .auth-error {
+      min-height: 22px;
+      margin: 2px 0 0;
+      color: #ffe1d8;
+      font-weight: 800;
+    }
+
     @media (max-width: 560px) {
       body {
         padding: 10px;
@@ -470,7 +535,20 @@
 <body>
   <main>
     <section class="shell">
-      <div id="homeView" class="view active">
+      <div id="authView" class="view active auth-view">
+        <div class="auth-panel">
+          <p class="lead">Private Quiz</p>
+          <h1>合言葉を入力</h1>
+          <p class="lead">クイズを始めるにはパスワードが必要です。</p>
+          <form id="authForm" class="auth-form">
+            <input id="passwordInput" class="auth-input" type="password" autocomplete="current-password" placeholder="パスワード">
+            <button id="authButton" class="primary-button" type="submit">入る</button>
+            <p id="authError" class="auth-error" aria-live="polite"></p>
+          </form>
+        </div>
+      </div>
+
+      <div id="homeView" class="view">
         <h1 id="appTitle" hidden></h1>
         <p id="appSubtitle" class="lead" hidden></p>
         <img id="topImage" class="top-image" src="" alt="">
@@ -639,6 +717,7 @@
       }
     };
 
+    const authView = document.querySelector('#authView');
     const homeView = document.querySelector('#homeView');
     const quizView = document.querySelector('#quizView');
     const resultView = document.querySelector('#resultView');
@@ -684,7 +763,12 @@
     const askedHistoryLines = document.querySelector('#askedHistoryLines');
     const clearHistoryButton = document.querySelector('#clearHistoryButton');
     const historyBackButton = document.querySelector('#historyBackButton');
+    const authForm = document.querySelector('#authForm');
+    const passwordInput = document.querySelector('#passwordInput');
+    const authButton = document.querySelector('#authButton');
+    const authError = document.querySelector('#authError');
 
+    const AUTH_STORAGE_KEY = 'quizAuthToken';
     const WRONG_STORAGE_KEY = 'quizWrongQuestions';
     const ASKED_STORAGE_KEY = 'quizAskedQuestions';
     const DEFAULT_WRONG_LIMIT = 100;
@@ -727,7 +811,7 @@
     let remainingSeconds = 0;
 
     function showView(view) {
-      [homeView, quizView, resultView, articleView, historyView].forEach((element) => {
+      [authView, homeView, quizView, resultView, articleView, historyView].forEach((element) => {
         element.classList.remove('active');
       });
       view.classList.add('active');
@@ -740,6 +824,10 @@
 
       const url = new URL(APPS_SCRIPT_URL);
       url.searchParams.set('action', action);
+      const token = getAuthToken();
+      if (token && !['authStatus', 'login'].includes(action)) {
+        url.searchParams.set('token', token);
+      }
       Object.entries(params).forEach(([key, value]) => {
         url.searchParams.set(key, value);
       });
@@ -758,6 +846,14 @@
     }
 
     function sampleApi(action, params) {
+      if (action === 'authStatus') {
+        return Promise.resolve({ passwordRequired: false });
+      }
+
+      if (action === 'login') {
+        return Promise.resolve({ token: 'sample-token', expiresAt: Date.now() + 12 * 60 * 60 * 1000 });
+      }
+
       if (action === 'config') {
         return Promise.resolve(sampleConfig);
       }
@@ -795,6 +891,96 @@
       return Promise.reject(new Error('unknown_action'));
     }
 
+    function getAuthToken() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(AUTH_STORAGE_KEY) || 'null');
+        if (!saved || !saved.token || !saved.expiresAt || Date.now() >= saved.expiresAt) {
+          localStorage.removeItem(AUTH_STORAGE_KEY);
+          return '';
+        }
+        return saved.token;
+      } catch {
+        localStorage.removeItem(AUTH_STORAGE_KEY);
+        return '';
+      }
+    }
+
+    function saveAuthToken(token, expiresAt) {
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ token, expiresAt }));
+    }
+
+    function clearAuthToken() {
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+    }
+
+    function showAuth(message = '') {
+      document.body.classList.add('auth-required');
+      authError.textContent = message;
+      authButton.disabled = false;
+      showView(authView);
+      window.setTimeout(() => passwordInput.focus(), 0);
+    }
+
+    function showAppHome() {
+      document.body.classList.remove('auth-required');
+      showView(homeView);
+    }
+
+    async function initializeApp() {
+      if (!APPS_SCRIPT_URL) {
+        showAppHome();
+        await loadConfig();
+        return;
+      }
+
+      try {
+        const status = await api('authStatus');
+        if (!status.passwordRequired) {
+          clearAuthToken();
+          showAppHome();
+          await loadConfig();
+          return;
+        }
+
+        if (getAuthToken()) {
+          showAppHome();
+          await loadConfig();
+          return;
+        }
+
+        showAuth();
+      } catch (error) {
+        showAuth(`認証設定の確認に失敗しました: ${error.message}`);
+      }
+    }
+
+    async function submitPassword(event) {
+      event.preventDefault();
+      const password = passwordInput.value.trim();
+      if (!password) {
+        authError.textContent = 'パスワードを入力してください。';
+        return;
+      }
+
+      authButton.disabled = true;
+      authError.textContent = '確認しています。';
+
+      try {
+        const data = await api('login', { password });
+        saveAuthToken(data.token, data.expiresAt);
+        passwordInput.value = '';
+        showAppHome();
+        await loadConfig();
+      } catch (error) {
+        clearAuthToken();
+        authError.textContent = error.message === 'invalid_password'
+          ? 'パスワードが違います。'
+          : `ログインに失敗しました: ${error.message}`;
+      } finally {
+        authButton.disabled = false;
+      }
+    }
+
     async function loadConfig() {
       loadStatus.textContent = '設定を読み込んでいます。';
       startButton.disabled = true;
@@ -808,6 +994,11 @@
         renderHome();
         loadStatus.textContent = APPS_SCRIPT_URL ? '' : 'サンプルデータで表示中です。';
       } catch (error) {
+        if (['auth_required', 'invalid_token', 'expired_token'].includes(error.message)) {
+          clearAuthToken();
+          showAuth('もう一度パスワードを入力してください。');
+          return;
+        }
         loadStatus.textContent = `読み込みに失敗しました: ${error.message}`;
       }
     }
@@ -1509,6 +1700,7 @@
     historyButton.addEventListener('click', openHistory);
     clearHistoryButton.addEventListener('click', clearHistory);
     reloadButton.addEventListener('click', loadConfig);
+    authForm.addEventListener('submit', submitPassword);
     nextButton.addEventListener('click', goNext);
     quitButton.addEventListener('click', () => {
       clearTimer();
@@ -1518,7 +1710,7 @@
     articleBackButton.addEventListener('click', () => showView(homeView));
     historyBackButton.addEventListener('click', () => showView(homeView));
 
-    loadConfig();
+    initializeApp();
   </script>
 </body>
 </html>
